@@ -3,7 +3,7 @@ Simple filehosting.
 I think there are many software that offer filehosting solutions. Let's reinvent the wheels, lol.
 
 ## Install
-(TODO, because I haven't understand how to replicate setup on this laptop)
+(TODO, because I haven't understand how to replicate setup on other machine, especially database)
 ## Usage
 Just run with cargo
 ```shell
