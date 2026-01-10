@@ -1,0 +1,5 @@
+/target
+/saved_files
+.env
+.sqlx
+Cargo.lock
