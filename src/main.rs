@@ -10,11 +10,12 @@ use actix_web::{
 use actix_web_httpauth::{self, extractors::basic::BasicAuth, middleware::HttpAuthentication};
 use dotenv::dotenv;
 use futures_util::StreamExt as _;
-use sqlx::{PgPool, postgres::PgPoolOptions};
+//use sqlx::{PgPool, postgres::PgPoolOptions};
+use sqlx::{SqlitePool, sqlite::SqlitePoolOptions};
 //use serde::Deserialize;
 use tokio::{fs::remove_file, fs::rename as tokio_rename, io::AsyncWriteExt};
 struct AppState {
-    db: PgPool,
+    db: SqlitePool,
     folder: String,
     url: String,
 }
@@ -41,12 +42,10 @@ async fn upload(
         let mut field = item?;
         let mut file =
             tokio::fs::File::create(format!("{}/{}", db.folder, &field.name().unwrap())).await?;
-        let _ = sqlx::query!(
-            "INSERT into files (file) VALUES ($1)",
-            &field.name().unwrap()
-        )
-        .fetch_one(&db.db)
-        .await;
+        let file_name = &field.name().unwrap();
+        let _ = sqlx::query!("INSERT into files (file) VALUES ($1)", file_name)
+            .fetch_one(&db.db)
+            .await;
         while let Some(chunk) = field.next().await {
             let chunk = chunk?;
             println!("Uploading...");
@@ -105,15 +104,17 @@ async fn delete(form: web::Form<FileFormOptional>, db: Data<AppState>) -> impl R
     let get_file = sqlx::query!("SELECT * FROM files WHERE id=$1", form.id)
         .fetch_one(&db.db)
         .await
-        .unwrap();
+        .unwrap()
+        .file;
+    let file_name = get_file.clone().unwrap();
     let _ = sqlx::query!(
         "DELETE FROM files WHERE id=$2 AND file=$1",
-        get_file.file.as_ref().unwrap(),
+        file_name,
         form.id
     )
     .execute(&db.db)
     .await;
-    let process = remove_file(format!("{}/{}", db.folder, get_file.file.unwrap())).await;
+    let process = remove_file(format!("{}/{}", db.folder, get_file.unwrap())).await;
     HttpResponse::Ok().body(format!("{:#?}", process))
 }
 
@@ -152,7 +153,7 @@ async fn main() -> std::io::Result<()> {
             std::process::exit(1);
         }
     };
-    let db = match PgPoolOptions::new()
+    let db = match SqlitePoolOptions::new()
         .max_connections(5)
         .connect(&db_url)
         .await
