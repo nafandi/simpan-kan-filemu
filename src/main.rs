@@ -1,9 +1,13 @@
 use actix_files::{self, Files};
 use actix_multipart::Multipart;
 use actix_web::{
-    App, HttpResponse, HttpServer, Responder, get, post,
+    App, HttpResponse, HttpServer, Responder,
+    dev::ServiceRequest,
+    error::ErrorUnauthorized,
+    get, post,
     web::{self, Data},
 };
+use actix_web_httpauth::{self, extractors::basic::BasicAuth, middleware::HttpAuthentication};
 use dotenv::dotenv;
 use futures_util::StreamExt as _;
 use sqlx::{PgPool, postgres::PgPoolOptions};
@@ -25,7 +29,7 @@ struct FileFormOptional {
 }
 #[get("/")]
 async fn home() -> impl Responder {
-    HttpResponse::Ok().body("Simple File Hosting")
+    HttpResponse::Ok().body("Simpan Kan Filemu")
 }
 
 #[post("/upload")]
@@ -112,6 +116,17 @@ async fn delete(form: web::Form<FileFormOptional>, db: Data<AppState>) -> impl R
     let process = remove_file(format!("{}/{}", db.folder, get_file.file.unwrap())).await;
     HttpResponse::Ok().body(format!("{:#?}", process))
 }
+
+async fn auth(
+    req: ServiceRequest,
+    cred: BasicAuth,
+) -> Result<ServiceRequest, (actix_web::Error, ServiceRequest)> {
+    if cred.user_id() == "nur" && cred.password() == Some("nur") {
+        return Ok(req);
+    } else {
+        return Err((ErrorUnauthorized("401 : Unauthorized"), req));
+    }
+}
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     println!("Simpan Kan Filemu - v0.1.0");
@@ -155,6 +170,7 @@ async fn main() -> std::io::Result<()> {
             .service(home)
             .service(
                 web::scope("/manage")
+                    .wrap(HttpAuthentication::with_fn(auth))
                     .app_data(web::Data::new(AppState {
                         db: db.clone(),
                         folder: saved_file.clone(),
