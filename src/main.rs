@@ -152,16 +152,19 @@ async fn main() -> std::io::Result<()> {
     println!("This things run on {}", &url);
     let server = match HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(AppState {
-                db: db.clone(),
-                folder: saved_file.clone(),
-                url: working_url.clone(),
-            }))
             .service(home)
-            .service(upload)
-            .service(rename)
-            .service(list)
-            .service(delete)
+            .service(
+                web::scope("/manage")
+                    .app_data(web::Data::new(AppState {
+                        db: db.clone(),
+                        folder: saved_file.clone(),
+                        url: working_url.clone(),
+                    }))
+                    .service(upload)
+                    .service(rename)
+                    .service(list)
+                    .service(delete),
+            )
             .service(Files::new("/files", saved_file.clone()))
     })
     .bind(url.clone())
