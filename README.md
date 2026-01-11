@@ -10,9 +10,9 @@ Just run with cargo
 cargo run
 ```
 then you can access from curl by using one of 4 options :
-- /upload/ - need to add file in curl request
-- /list/
-- /rename/ - need to add file and id, you can get id from list
-- /delete/ - only need to fill id
+- /manage/upload/ - need to add file in curl request
+- /manage/list/
+- /manage/rename/ - need to add file and id, you can get id from list
+- /manage/delete/ - only need to fill id
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
