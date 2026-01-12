@@ -123,13 +123,14 @@ async fn auth(
 ) -> Result<ServiceRequest, (actix_web::Error, ServiceRequest)> {
     let db = req.app_data::<Data<AppState>>();
     let username = cred.user_id();
-    let username_fetch = match sqlx::query!("SELECT * FROM users WHERE username=$1", username)
-        .fetch_one(&db.unwrap().db)
-        .await
-    {
-        Ok(x) => x.password,
-        Err(_) => return Err((ErrorUnauthorized("401 : Unauthorized"), req)),
-    };
+    let username_fetch =
+        match sqlx::query!("SELECT password FROM users WHERE username=$1", username)
+            .fetch_one(&db.unwrap().db)
+            .await
+        {
+            Ok(x) => x.password,
+            Err(_) => return Err((ErrorUnauthorized("401 : Unauthorized"), req)),
+        };
     if cred.password() == Some(&username_fetch) {
         return Ok(req);
     } else {
