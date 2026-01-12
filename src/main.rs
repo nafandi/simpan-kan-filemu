@@ -117,12 +117,20 @@ async fn delete(form: web::Form<FileFormOptional>, db: Data<AppState>) -> impl R
     let process = remove_file(format!("{}/{}", db.folder, get_file.unwrap())).await;
     HttpResponse::Ok().body(format!("{:#?}", process))
 }
-
 async fn auth(
     req: ServiceRequest,
     cred: BasicAuth,
 ) -> Result<ServiceRequest, (actix_web::Error, ServiceRequest)> {
-    if cred.user_id() == "nur" && cred.password() == Some("nur") {
+    let db = req.app_data::<Data<AppState>>();
+    let username = cred.user_id();
+    let username_fetch = match sqlx::query!("SELECT * FROM users WHERE username=$1", username)
+        .fetch_one(&db.unwrap().db)
+        .await
+    {
+        Ok(x) => x.password,
+        Err(_) => return Err((ErrorUnauthorized("401 : Unauthorized"), req)),
+    };
+    if cred.password() == Some(&username_fetch) {
         return Ok(req);
     } else {
         return Err((ErrorUnauthorized("401 : Unauthorized"), req));
