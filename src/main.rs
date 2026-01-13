@@ -1,38 +1,16 @@
 use actix_files::{self, Files};
-use actix_web::{
-    App, HttpServer,
-    dev::ServiceRequest,
-    error::ErrorUnauthorized,
-    web::{self, Data},
-};
-use actix_web_httpauth::{self, extractors::basic::BasicAuth, middleware::HttpAuthentication};
+use actix_web::{App, HttpServer, web};
+use actix_web_httpauth::{self, middleware::HttpAuthentication};
 use dotenv::dotenv;
 use sqlx::sqlite::SqlitePoolOptions;
 // import own module
 mod manage;
 mod shared_values;
-use crate::manage::{delete::delete, home::home, list::list, rename::rename, upload::upload};
+use crate::manage::{
+    auth::auth, delete::delete, home::home, list::list, rename::rename, upload::upload,
+};
 use crate::shared_values::AppState;
-async fn auth(
-    req: ServiceRequest,
-    cred: BasicAuth,
-) -> Result<ServiceRequest, (actix_web::Error, ServiceRequest)> {
-    let db = req.app_data::<Data<shared_values::AppState>>();
-    let username = cred.user_id();
-    let username_fetch =
-        match sqlx::query!("SELECT password FROM users WHERE username=$1", username)
-            .fetch_one(&db.unwrap().db)
-            .await
-        {
-            Ok(x) => x.password,
-            Err(_) => return Err((ErrorUnauthorized("401 : Unauthorized"), req)),
-        };
-    if cred.password() == Some(&username_fetch) {
-        return Ok(req);
-    } else {
-        return Err((ErrorUnauthorized("401 : Unauthorized"), req));
-    }
-}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     println!("Simpan Kan Filemu - v0.1.0");
