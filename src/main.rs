@@ -219,7 +219,7 @@ async fn main() -> std::io::Result<()> {
                     .service(list)
                     .service(delete),
             )
-            .service(Files::new("/files", saved_file.clone()))
+            .service(Files::new("/files", saved_file.clone()).index_file("private_index"))
     })
     .bind(url.clone())
     {
