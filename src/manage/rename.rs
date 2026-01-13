@@ -1,5 +1,4 @@
-use crate::shared_values::AppState;
-use crate::shared_values::FileForm;
+use crate::shared_values::{AppState, FileForm};
 use actix_web::{
     HttpResponse, Responder, post,
     web::{self, Data},
