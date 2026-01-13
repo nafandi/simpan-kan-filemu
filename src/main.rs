@@ -48,11 +48,10 @@ async fn upload(
             .await;
         while let Some(chunk) = field.next().await {
             let chunk = chunk?;
-            println!("Uploading...");
             let _ = file.write_all(&chunk).await?;
         }
     }
-    Ok(HttpResponse::Ok().finish())
+    Ok(HttpResponse::Ok().body("Upload success"))
 }
 #[get("/list")]
 async fn list(db: Data<AppState>) -> impl Responder {
@@ -85,28 +84,54 @@ async fn list(db: Data<AppState>) -> impl Responder {
 }
 #[post("/rename")]
 async fn rename(form: web::Form<FileForm>, db: Data<AppState>) -> impl Responder {
-    let get_file = sqlx::query!("SELECT * FROM files WHERE id=$1", form.id)
+    let get_file = match sqlx::query!("SELECT file FROM files WHERE id=$1", form.id)
         .fetch_one(&db.db)
-        .await;
+        .await
+    {
+        Ok(get_file) => match get_file.file {
+            Some(file) => file,
+            None => {
+                return HttpResponse::Ok()
+                    .body("Error getting file from id, you might typed wrong id");
+            }
+        },
+        Err(_) => {
+            return HttpResponse::Ok().body("Error getting file from id, you might typed wrong id");
+        }
+    };
     let _ = sqlx::query!("UPDATE files SET file=$1 WHERE id=$2", form.file, form.id)
         .execute(&db.db)
         .await;
-    let process = tokio_rename(
-        format!("{}/{}", db.folder, get_file.unwrap().file.unwrap()),
+    let process = match tokio_rename(
+        format!("{}/{}", db.folder, get_file),
         format!("{}/{}", db.folder, form.file),
     )
-    .await;
-    HttpResponse::Ok().body(format!("{:#?}", process))
+    .await
+    {
+        Ok(_) => HttpResponse::Ok().body("File rename success"),
+        Err(_) => HttpResponse::Ok().body("File rename error"),
+    };
+    return process;
 }
 // todo
 #[post("/delete")]
 async fn delete(form: web::Form<FileFormOptional>, db: Data<AppState>) -> impl Responder {
-    let get_file = sqlx::query!("SELECT * FROM files WHERE id=$1", form.id)
+    let get_file = match sqlx::query!("SELECT * FROM files WHERE id=$1", form.id)
         .fetch_one(&db.db)
         .await
-        .unwrap()
-        .file;
-    let file_name = get_file.clone().unwrap();
+    {
+        Ok(get_file) => match get_file.file {
+            Some(file) => file,
+            None => {
+                return HttpResponse::Ok()
+                    .body("Error getting file from id, you might typed wrong id");
+            }
+        },
+        Err(_) => {
+            return HttpResponse::Ok().body("Error getting file from id, you might typed wrong id");
+        }
+    };
+    let file_name = get_file.clone();
     let _ = sqlx::query!(
         "DELETE FROM files WHERE id=$2 AND file=$1",
         file_name,
@@ -114,8 +139,11 @@ async fn delete(form: web::Form<FileFormOptional>, db: Data<AppState>) -> impl R
     )
     .execute(&db.db)
     .await;
-    let process = remove_file(format!("{}/{}", db.folder, get_file.unwrap())).await;
-    HttpResponse::Ok().body(format!("{:#?}", process))
+    let process = match remove_file(format!("{}/{}", db.folder, get_file)).await {
+        Ok(_) => HttpResponse::Ok().body("File delete success"),
+        Err(_) => HttpResponse::Ok().body("File delete error"),
+    };
+    return process;
 }
 async fn auth(
     req: ServiceRequest,
