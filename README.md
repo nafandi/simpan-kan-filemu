@@ -22,6 +22,7 @@ then you can access from curl by using one of 4 options :
 - /manage/list/
 - /manage/rename/ - need to add file and id, you can get id from list
 - /manage/delete/ - only need to fill id
+
 the default username and password are admin/admin
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
