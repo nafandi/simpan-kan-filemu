@@ -1,0 +1,4 @@
+DATABASE_URL="sqlite:////(yourdir)/simpan-kan-filemu.db"
+HOST_URL="127.0.0.1:8080"
+FOLDER_STORAGE="./saved_files"
+//OPENAI_API_KEY="not AI related project :D"
