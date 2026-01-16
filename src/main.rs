@@ -47,7 +47,6 @@ async fn main() -> std::io::Result<()> {
             std::process::exit(1);
         }
     }; //.expect("Can't connect to DB, so program ends");
-    let working_url = url.clone();
     println!("This things run on {}", &url);
     let server = match HttpServer::new(move || {
         App::new()
@@ -58,7 +57,6 @@ async fn main() -> std::io::Result<()> {
                     .app_data(web::Data::new(AppState {
                         db: db.clone(),
                         folder: saved_file.clone(),
-                        url: working_url.clone(),
                     }))
                     .service(upload)
                     .service(rename)
@@ -67,7 +65,7 @@ async fn main() -> std::io::Result<()> {
             )
             .service(Files::new("/files", saved_file.clone()).index_file("private_index"))
     })
-    .bind(url.clone())
+    .bind(url)
     {
         Ok(server) => server,
         Err(_) => {

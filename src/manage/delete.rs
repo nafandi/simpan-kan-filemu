@@ -2,14 +2,14 @@
 struct FileFormOptional {
     id: Option<i32>,
 }
-use crate::shared_values::AppState;
+use crate::shared_values::{AppState, Info};
 use actix_web::{
-    HttpResponse, Responder, post,
+    post,
     web::{self, Data},
 };
 use tokio::fs::remove_file;
 #[post("/delete")]
-pub async fn delete(form: web::Form<FileFormOptional>, db: Data<AppState>) -> impl Responder {
+pub async fn delete(form: web::Json<FileFormOptional>, db: Data<AppState>) -> web::Json<Info> {
     let get_file = match sqlx::query!("SELECT * FROM files WHERE id=$1", form.id)
         .fetch_one(&db.db)
         .await
@@ -17,12 +17,17 @@ pub async fn delete(form: web::Form<FileFormOptional>, db: Data<AppState>) -> im
         Ok(get_file) => match get_file.file {
             Some(file) => file,
             None => {
-                return HttpResponse::Ok()
-                    .body("Error getting file from id, you might typed wrong id");
+                return web::Json(Info {
+                    status: (404),
+                    info: (format!("Not Found")),
+                });
             }
         },
         Err(_) => {
-            return HttpResponse::Ok().body("Error getting file from id, you might typed wrong id");
+            return web::Json(Info {
+                status: (404),
+                info: (format!("Not Found")),
+            });
         }
     };
     let file_name = get_file.clone();
@@ -34,8 +39,14 @@ pub async fn delete(form: web::Form<FileFormOptional>, db: Data<AppState>) -> im
     .execute(&db.db)
     .await;
     let process = match remove_file(format!("{}/{}", db.folder, get_file)).await {
-        Ok(_) => HttpResponse::Ok().body("File delete success"),
-        Err(_) => HttpResponse::Ok().body("File delete error"),
+        Ok(_) => web::Json(Info {
+            status: (200),
+            info: (format!("File deletion success")),
+        }),
+        Err(_) => web::Json(Info {
+            status: (503),
+            info: (format!("Deletion failed")),
+        }),
     };
     return process;
 }
